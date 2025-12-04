@@ -1,0 +1,17 @@
+# Raspberry Pi focused requirements
+# Includes numeric libs and sensor/audio dependencies typically needed on Pi
+
+Flask>=2.3,<3.0
+numpy>=1.24
+sounddevice>=0.4.6
+
+# I2C and sensors
+smbus2
+# Pimoroni Enviro+ meta-package (includes bme280, ltr559, etc.)
+enviroplus
+# If you prefer installing individually instead of enviroplus, uncomment:
+# bme280
+# ltr559
+
+# Optional web server for deployment
+# gunicorn>=21.2

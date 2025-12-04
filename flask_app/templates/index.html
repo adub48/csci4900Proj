@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>CCI</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <script src="{{ url_for('static', filename='js/main.js') }}" defer></script>
+</head>
+<body>
+
+<header>
+  <h1>Welcome to the Cognitive Comfort Index</h1>
+</header>
+<section class="cci-section">
+<div class="sensor-data">
+  <h3>Cognitive Comfort Index</h3>
+  <div class="circle-card">
+  <svg class="progress-ring" width="140" height="140">
+    <defs>
+      <!-- gradient for the ring -->
+<linearGradient id="ringGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+  <stop offset="0%" stop-color="pink" />      <!-- pink -->
+  <stop offset="100%" stop-color="blue" />     <!-- blue -->
+</linearGradient>
+    </defs>
+
+    <!-- background circle -->
+    <circle
+      class="progress-ring__bg"
+      cx="70"
+      cy="70"
+      r="60"
+    />
+
+    <!-- progress circle -->
+    <circle
+      id="cog-ring"
+      class="progress-ring__progress"
+      cx="70"
+      cy="70"
+      r="60"
+    />
+  </svg>
+
+  <div class="circle-content">
+    <div class="circle-icon">🧠</div>
+    <div id="cog-score" class="circle-score">0</div>
+    <div class="circle-max">/ 100</div>
+  </div>
+</div>
+  <span class="score" id="cciScore">-</span>
+</div>
+</section>
+
+<h2>Live Readings</h2>
+
+<section class="live-data">
+<div class="sensor-data">
+  <h3>Temperature Score</h3>
+  <span class="score" id="tempScore"></span>
+  <span class="reading">Live Temp: <span id="tempValue">-</span></span>
+  <span class="optimal">Optimal Temp: 71°F</span>
+</div>
+
+<div class="sensor-data">
+  <h3>Humidity Score</h3>
+  <span class="score" id="humScore"></span>
+  <span class="reading">Live Humidity: <span id="humValue">-</span></span>
+  <span class="optimal">Optimal Humidity: 50%</span>
+</div>
+
+<div class="sensor-data">
+  <h3>Light Score</h3>
+  <span class="score" id="lightScore"></span>
+  <span class="reading">Live Light: <span id="lightValue">-</span></span>
+  <span class="optimal">Optimal Light: 300 Lux</span>
+</div>
+
+<div class="sensor-data">
+  <h3>Noise Score</h3>
+  <span class="score" id="noiseScore"></span>
+  <span class="reading">Live Noise: <span id="noiseValue">-</span></span>
+  <span class="optimal">Optimal Noise: 50 dB</span>
+</div>
+</section>
+
+<section class="leaderboard">
+  <div class="leaderboard-table-wrapper">
+    <h2>Study Spots</h2>
+    <form class="studyspot-form" onsubmit="handleSaveStudySpot(event)">
+      <p class="section-subtitle">Add a new study spot</p>
+      <label for="studySpotName" class="studyspot-label">
+        Study Spot Name:
+      </label>
+      <input
+        type="text"
+        id="studySpotName"
+        class="studyspot-input"
+        placeholder="e.g. Main Library 3rd Floor"
+        required
+        minlength="1"
+      />
+      <button type="submit">Save study spot</button>
+    </form>
+      <div class="leaderboard-heading">
+      <h2 id="leaderboard-title">Leaderboard</h2>
+      <p class="section-subtitle">Best study spots</p>
+    </div>
+    <table class="leaderboard-table" aria-describedby="leaderboard-title">
+      <thead>
+        <tr>
+          <th class="col-rank">Rank</th>
+          <th class="col-name">Name</th>
+          <th class="col-time">Time</th>
+          <th class="col-cci">CCI Score</th>
+          <th class="col-temp">Temp Score</th>
+          <th class="col-hum">Humidity Score</th>
+          <th class="col-light">Light Score</th>
+          <th class="col-noise">Noise Score</th>
+        </tr>
+      </thead>
+      <tbody id="leaderboard-body"></tbody>
+    </table>
+  </div>
+</section>
+
+</body>
+</html>

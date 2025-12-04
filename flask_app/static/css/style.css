@@ -1,0 +1,284 @@
+body {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  padding: 2rem;
+}
+header {
+    background: linear-gradient(135deg, #4f8cff 0%, #2a3d66 100%);
+    padding: 1em 0em 2em 0em;
+    text-align: center;
+    border-bottom-left-radius: 2em;
+    border-bottom-right-radius: 2em;
+    margin: 0 auto 2em auto;
+}
+
+h2 {
+  text-align: center;
+  font-family: 'EB Garamond', serif;
+  color: #2a3d66;
+  font-size: 1.5em;
+  margin-bottom: 0.5em;
+  letter-spacing: 0.02em;
+}
+
+h3 {
+  text-align: center;
+  font-family: 'EB Garamond', serif;
+  color: #2a3d66;
+  font-size: 1.25em;
+  margin: 0.5em 0;
+  letter-spacing: 0.02em;
+}
+
+.score {
+  font-size: 2.5em;
+  font-weight: 700;
+  margin-bottom: 0.5em;
+}
+
+.optimal {
+  font-size: 0.9em;
+  color: #6b7280;
+  margin-top: 0.25em;
+}
+
+.sensor-data {
+  background: #fff;
+  border-radius: 0.75em;
+  box-shadow: 0 4px 16px rgba(44, 62, 80, 0.13);
+  border: 1px solid #d1d1d1;
+  padding: 1em;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transition: box-shadow 0.2s;
+  min-width: 0;
+}
+section.live-data {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 2em;
+  margin: 2em 0;
+}
+
+section.controls {
+  text-align: center;
+}
+
+
+button {
+  padding: 0.5rem 1rem;
+  border-radius: 999px;
+  border: none;
+  background: #2563eb;
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+  margin-bottom: 1rem;
+}
+button:disabled {
+  background: #9ca3af;
+  cursor: default;
+}
+.card {
+  background: white;
+  border-radius: 12px;
+  padding: 1rem;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+  max-width: 500px;
+}
+
+.good {
+  color: green;
+  font-weight: bold;
+}
+.medium {
+  color: orange;
+}
+.bad {
+  color: red;
+  font-weight: bold;
+}
+
+.circle-card {
+  position: relative;
+  width: 140px;
+  height: 140px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 1rem;
+}
+
+.progress-ring {
+  transform: rotate(-90deg); /* start at top */
+}
+
+.progress-ring__bg {
+  fill: none;
+  stroke: #e5e7eb;          /* light gray */
+  stroke-width: 10;
+}
+
+.progress-ring__progress {
+  fill: none;
+  stroke: url(#ringGradient);
+  stroke-width: 10;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.4s ease;
+}
+
+.circle-content {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+}
+
+.circle-icon {
+  font-size: 24px;
+  margin-bottom: 4px;
+  color: #9ca3af;
+}
+
+.circle-score {
+  font-size: 22px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.circle-max {
+  font-size: 14px;
+  color: #9ca3af;
+}
+
+section.leaderboard {
+  margin: 3rem auto;
+  max-width: 1400px;
+  padding: 0 1rem 3rem;
+}
+
+/* Title + subtitle stay consistent with other headings */
+
+.section-subtitle {
+  font-size: 0.95rem;
+  color: #6b7280;
+  margin-bottom: 2rem;
+}
+
+/* Card container – matches .sensor-data look */
+.leaderboard-table-wrapper {
+  width: 100%;
+  background: #ffffff;
+  border-radius: 0.75em;
+  box-shadow: 0 4px 16px rgba(44, 62, 80, 0.13);
+  border: 1px solid #d1d1d1;
+  padding: 1.5rem 1.75rem;
+  overflow-x: auto;
+}
+
+/* Table styles */
+.leaderboard-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+}
+
+/* Table header */
+.leaderboard-table thead tr {
+  background: #f3f4f6;
+}
+
+.leaderboard-table th {
+  padding: 0.9rem 1.1rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 0.8rem;
+  color: #2a3d66;
+  border-bottom: 2px solid #e5e7eb;
+  letter-spacing: 0.06em;
+}
+
+/* Table body */
+.leaderboard-table td {
+  padding: 0.9rem 1.1rem;
+  border-bottom: 1px solid #e5e7eb;
+  color: #111827;
+}
+
+.leaderboard-table tbody tr:nth-child(even) {
+  background: #f9fafb;
+}
+
+.leaderboard-table tbody tr:hover {
+  background: #eef2ff;
+  transition: background 0.2s ease;
+}
+
+/* Column tweaks */
+.col-rank {
+  width: 70px;
+}
+
+.col-name {
+  text-align: left;
+  font-weight: 500;
+}
+
+/* Make rank stand out but still on-brand */
+.leaderboard-table td.col-rank {
+  font-weight: 700;
+  color: #2a3d66;
+}
+
+/* Header row: title + save form */
+.leaderboard-header-row {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1.5rem;
+  margin-bottom: 1.25rem;
+  flex-wrap: wrap;
+}
+
+.leaderboard-heading {
+  text-align: left;
+}
+
+#leaderboard-title {
+  text-align: left;
+}
+
+/* Reuse your existing h2 style from global,
+   so nothing special needed here */
+
+/* Save study spot form */
+.studyspot-form {
+  align-items: center;
+  gap: 0.75rem;
+  text-align: center;
+}
+
+.studyspot-label {
+  font-size: 0.85rem;
+  color: #4b5563; /* gray-600 */
+}
+
+.studyspot-input {
+  padding: 0.45rem 0.9rem;
+  border-radius: 999px;
+  border: 1px solid #d1d5db;
+  min-width: 230px;
+  font: inherit;
+  outline: none;
+}
+
+.studyspot-input:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
+}
+
+/* Button already styled globally; this just ensures spacing in the row */
+.studyspot-form button {
+  margin-bottom: 0; /* override global margin-bottom if needed */
+}
