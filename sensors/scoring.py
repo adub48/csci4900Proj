@@ -3,12 +3,13 @@ import numpy as np
 #https://indoor.lbl.gov/publications/effect-temperature-task-performance
 def temperatureScore(temperature):
     """Productivity function based on temperature in Celsius."""
-    return (
+    score = (
         0.0000623 * temperature**3
         - 0.0058274 * temperature**2
         + 0.1647524 * temperature
         - 0.4685328
     ) * 100
+    return max(0.0, min(100.0, score))
 
 #https://www.sciencedirect.com/science/article/abs/pii/S0272494413001060?via%3Dihub
 #https://journals.sagepub.com/doi/10.1177/096032719002200201
