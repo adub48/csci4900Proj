@@ -1,179 +1,191 @@
-(function () {
-  "use strict";
-
-  // ── Helpers ─────────────────────────────────────────────────────────────
-
-  function updater(id, value) {
+const updater = (id, value) => {
     const el = document.getElementById(id);
     if (!el) return;
-    el.classList.remove("skeleton");
     el.textContent = value;
     el.classList.remove("good", "medium", "bad");
     if (el.classList.contains("score")) {
-      if (value >= 66) {
-        el.classList.add("good");
-      } else if (value >= 33) {
-        el.classList.add("medium");
-      } else {
-        el.classList.add("bad");
-      }
+        if (value >= 66) {
+            el.classList.add("good");
+        } else if (value >= 33) {
+            el.classList.add("medium");
+        } else {
+            el.classList.add("bad");
+        }
     }
-  }
+};
 
-  function escapeHtml(str) {
-    return String(str)
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;")
-      .replace(/'/g, "&#039;");
-  }
+async function liveFeed() {
+try {
+    const data = await fetch("/sensors").then(r => r.json());
+    const readings = data.readings;
+    const scores = data.scores;
+    updater("tempValue", `${readings.temperature_f.toFixed(1)} °F`);
+    updater("humValue", `${readings.humidity_pct.toFixed(1)} %`);
+    updater("lightValue", `${readings.light_lux.toFixed(1)} lux`);
+    updater("noiseValue", `${readings.noise_db.toFixed(1)} dB`);
+    updater("tempScore", scores.temperature_score);
+    updater("humScore", scores.humidity_score);
+    updater("lightScore", scores.light_score);
+    updater("noiseScore", scores.noise_score);
+    updater("cciScore", scores.total_score);
+    setCognitiveScore(scores.total_score);
 
-  function formatTimestamp(ts) {
-    if (!ts) return "";
+} catch (err) {
+    console.error("Failed to update sensors", err);
+}
+}
+setInterval(liveFeed, 1000);
+
+const button = document.getElementById("readButton");
+const statusEl = document.getElementById("status");
+const card = document.getElementById("readingCard");
+
+const timeEl = document.getElementById("time");
+const tempEl = document.getElementById("temp");
+const humEl = document.getElementById("hum");
+const lightEl = document.getElementById("light");
+const noiseEl = document.getElementById("noise");
+
+async function takeReading() {
+    button.disabled = true;
+    statusEl.textContent = "Taking reading on Pi...";
+    card.style.display = "none";
+
     try {
-      return new Date(ts).toLocaleString();
-    } catch {
-      return ts;
+    const res = await fetch("/sensors");
+    if (!res.ok) {
+        throw new Error("Pi returned status " + res.status);
     }
-  }
+    const readings = await res.json();
 
-  // ── SVG progress ring ────────────────────────────────────────────────────
+    tempEl.textContent = readings.temperature_f.toFixed(1) + " °F";
+    humEl.textContent = readings.humidity_pct.toFixed(1) + " %";
+    lightEl.textContent = readings.light_lux.toFixed(1) + " lux";
+    noiseEl.textContent = readings.noise_db.toFixed(1) + " dB";
 
-  function setCognitiveScore(score) {
-    const circle = document.getElementById("cog-ring");
-    const textEl = document.getElementById("cog-score");
-    if (!circle || !textEl) return;
-
-    const value = Math.max(0, Math.min(100, Number(score)));
-    const radius = circle.r.baseVal.value;
-    const circumference = 2 * Math.PI * radius;
-
-    circle.style.strokeDasharray = `${circumference} ${circumference}`;
-    circle.style.strokeDashoffset = circumference * (1 - value / 100);
-    textEl.textContent = Math.round(value);
-  }
-
-  // ── Live sensor feed with exponential backoff ────────────────────────────
-
-  let pollInterval = 1_000;
-  let consecutiveErrors = 0;
-  let firstLoad = true;
-  const MAX_POLL_INTERVAL = 16_000;
-
-  function applySkeletons() {
-    const ids = [
-      "tempScore", "humScore", "lightScore", "noiseScore", "cciScore",
-      "tempValue", "humValue", "lightValue", "noiseValue",
-    ];
-    ids.forEach(id => document.getElementById(id)?.classList.add("skeleton"));
-  }
-
-  async function liveFeed() {
-    try {
-      const res = await fetch("/sensors");
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      const { readings, scores } = data;
-
-      updater("tempValue",  `${readings.temperature_f.toFixed(1)} °F`);
-      updater("humValue",   `${readings.humidity_pct.toFixed(1)} %`);
-      updater("lightValue", `${readings.light_lux.toFixed(1)} lux`);
-      updater("noiseValue", `${readings.noise_db.toFixed(1)} dB`);
-      updater("tempScore",  scores.temperature_score);
-      updater("humScore",   scores.humidity_score);
-      updater("lightScore", scores.light_score);
-      updater("noiseScore", scores.noise_score);
-      updater("cciScore",   scores.total_score);
-      setCognitiveScore(scores.total_score);
-
-      if (consecutiveErrors > 0) {
-        document.getElementById("sensor-error")?.classList.remove("visible");
-        consecutiveErrors = 0;
-        pollInterval = 1_000;
-      }
-      firstLoad = false;
+    card.style.display = "block";
+    statusEl.textContent = "Reading received.";
     } catch (err) {
-      consecutiveErrors++;
-      pollInterval = Math.min(pollInterval * 2, MAX_POLL_INTERVAL);
-      document.getElementById("sensor-error")?.classList.add("visible");
-      console.error("Sensor poll failed:", err);
+    console.error(err);
+    statusEl.textContent = "Error contacting Pi.";
+    } finally {
+    button.disabled = false;
     }
+}
 
-    setTimeout(liveFeed, pollInterval);
-  }
+// Guard: page may not have the old manual reading button anymore.
+if (button) {
+    button.addEventListener("click", takeReading);
+}
 
-  // ── Leaderboard ──────────────────────────────────────────────────────────
+function setCognitiveScore(score) {
+  const circle = document.getElementById("cog-ring");
+  const textEl = document.getElementById("cog-score");
 
-  function renderLeaderboard(items) {
-    const tbody = document.getElementById("leaderboard-body");
-    if (!tbody) return;
-    tbody.innerHTML = "";
+  if (!circle || !textEl) return;
 
-    if (!items || items.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="8" class="col-empty">No study spots logged yet.</td></tr>`;
-      return;
-    }
+  // clamp score 0–100
+  const value = Math.max(0, Math.min(100, Number(score)));
 
-    tbody.innerHTML = items.map((item, idx) => `
-      <tr>
-        <td class="col-rank">${idx + 1}</td>
-        <td class="col-name">${escapeHtml(item.location)}</td>
-        <td class="col-time">${formatTimestamp(item.timestamp_utc)}</td>
-        <td class="col-cci">${Math.round(item.total_score)}</td>
-        <td class="col-temp">${Math.round(item.temperature_score)}</td>
-        <td class="col-hum">${Math.round(item.humidity_score)}</td>
-        <td class="col-light">${Math.round(item.light_score)}</td>
-        <td class="col-noise">${Math.round(item.noise_score)}</td>
-      </tr>
-    `).join("");
-  }
+  const radius = circle.r.baseVal.value;
+  const circumference = 2 * Math.PI * radius;
 
-  async function refreshLeaderboard() {
-    try {
-      const res = await fetch("/leaderboard");
-      renderLeaderboard(await res.json());
-    } catch (err) {
-      console.error("Failed to load leaderboard:", err);
-    }
-  }
+  circle.style.strokeDasharray = `${circumference} ${circumference}`;
 
-  // ── Study spot form ──────────────────────────────────────────────────────
+  const offset = circumference * (1 - value / 100);
+  circle.style.strokeDashoffset = offset;
 
-  async function handleSaveStudySpot(event) {
+  textEl.textContent = Math.round(value);
+}
+
+async function handleSaveStudySpot(event) {
     event.preventDefault();
     const input = document.getElementById("studySpotName");
     const name = (input?.value || "").trim();
     if (!name) {
-      alert("Please enter a study spot name.");
-      return;
+        alert("Please enter a study spot name.");
+        return;
     }
 
     try {
-      const res = await fetch("/api/log", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.message || `Request failed: ${res.status}`);
-      input.value = "";
-      await refreshLeaderboard();
+        const res = await fetch("/api/log", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+            throw new Error(data?.message || `Request failed: ${res.status}`);
+        }
+        input.value = "";
+        await refreshLeaderboard();
     } catch (err) {
-      console.error("Failed to save study spot:", err);
-      alert(`Error: ${err.message}`);
+        console.error("Failed to save study spot", err);
+        alert(`Error: ${err.message}`);
     }
-  }
+}
 
-  // ── Init ─────────────────────────────────────────────────────────────────
+async function refreshLeaderboard() {
+    try {
+        const res = await fetch("/leaderboard");
+        const list = await res.json();
+        renderLeaderboard(list);
+    } catch (err) {
+        console.error("Failed to load leaderboard", err);
+    }
+}
 
-  document.addEventListener("DOMContentLoaded", async () => {
-    applySkeletons();
-    liveFeed();
+function renderLeaderboard(items) {
+    const tbody = document.getElementById("leaderboard-body");
+    if (!tbody) return;
+    tbody.innerHTML = "";
+    if (!items || items.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="8" class="col-empty">No study spots logged yet.</td></tr>`;
+        return;
+    }
+    const rows = (items || []).map((item, idx) => {
+        const dateStr = formatTimestamp(item.timestamp_utc);
+        return `
+            <tr>
+                <td class="col-rank">${idx + 1}</td>
+                <td class="col-name">${escapeHtml(item.location)}</td>
+                <td class="col-time">${dateStr}</td>
+                <td class="col-cci">${Math.round(item.total_score)}</td>
+                <td class="col-temp">${Math.round(item.temperature_score)}</td>
+                <td class="col-hum">${Math.round(item.humidity_score)}</td>
+                <td class="col-light">${Math.round(item.light_score)}</td>
+                <td class="col-noise">${Math.round(item.noise_score)}</td>
+            </tr>
+        `;
+    });
+    tbody.innerHTML = rows.join("");
+}
+
+function formatTimestamp(ts) {
+    if (!ts) return "";
+    try {
+        const d = new Date(ts);
+        return d.toLocaleString();
+    } catch {
+        return ts;
+    }
+}
+
+function escapeHtml(str) {
+    return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
+// initial load
+document.addEventListener("DOMContentLoaded", async () => {
     await refreshLeaderboard();
-  });
+});
 
-  // Expose only the handlers needed by inline HTML form attributes.
-  window.handleSaveStudySpot = handleSaveStudySpot;
-  window.refreshLeaderboard = refreshLeaderboard;
-})();
+// expose to global for inline HTML handlers
+window.handleSaveStudySpot = handleSaveStudySpot;
+window.refreshLeaderboard = refreshLeaderboard;
+

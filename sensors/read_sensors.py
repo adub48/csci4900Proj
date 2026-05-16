@@ -1,160 +1,86 @@
-from __future__ import annotations
-
-import logging
-import math
-import os
-import time
-
+from bme280 import BME280
+from ltr559 import LTR559
+import sounddevice as sd
 import numpy as np
+import time
+import os
+import math
 
-from sensors.config import (
-    CPU_COMP_FACTOR,
-    NOISE_CALIBRATION_OFFSET,
-    NOISE_SAMPLE_DURATION,
-    NOISE_SAMPLE_RATE,
-)
-
-logger = logging.getLogger(__name__)
-
-# ---------------------------------------------------------------------------
-# Lazy hardware accessors — imports and sensor objects are created on first
-# use so the module can be imported on any machine without crashing.
-# ---------------------------------------------------------------------------
-
-_bme = None
-_ltr = None
+# Initialize sensors
+bme = BME280()
+ltr = LTR559()
 
 
-def _get_bme():
-    global _bme
-    if _bme is None:
-        try:
-            from bme280 import BME280
-            _bme = BME280()
-        except Exception as exc:
-            logger.warning("BME280 unavailable: %s", exc)
-    return _bme
+def temperature_c():
+    """Return the current temperature in Celsius."""
+    with open("/sys/class/thermal/thermal_zone0/temp") as f:
+        cpu_temp = int(f.read().strip())
+        cpu_temp = cpu_temp / 1000.0  # Convert millidegree to degrees Celsius
+    
+    CPU_COMP_FACTOR = 1.5  # adjust until it matches a real thermometer
+    raw_temp = bme.get_temperature()
+    comp_temp = raw_temp - ((cpu_temp - raw_temp) / CPU_COMP_FACTOR)
+    return comp_temp
 
-
-def _get_ltr():
-    global _ltr
-    if _ltr is None:
-        try:
-            from ltr559 import LTR559
-            _ltr = LTR559()
-        except Exception as exc:
-            logger.warning("LTR559 unavailable: %s", exc)
-    return _ltr
-
-
-# ---------------------------------------------------------------------------
-# Sensor reading functions
-# ---------------------------------------------------------------------------
-
-def temperature_c() -> float | None:
-    """Return the current temperature in Celsius with CPU heat compensation."""
-    bme = _get_bme()
-    if bme is None:
-        return None
-    try:
-        with open("/sys/class/thermal/thermal_zone0/temp") as f:
-            cpu_temp = int(f.read().strip()) / 1000.0
-        raw_temp = bme.get_temperature()
-        return raw_temp - ((cpu_temp - raw_temp) / CPU_COMP_FACTOR)
-    except Exception as exc:
-        logger.warning("temperature_c read failed: %s", exc)
-        return None
-
-
-def temperature_f() -> float | None:
-    """Return the current temperature in Fahrenheit."""
+def temperature_f():
+    """Return the current temperature in Farenheit."""
     c = temperature_c()
-    return None if c is None else c * 9.0 / 5.0 + 32.0
+    f = c * 9.0 / 5.0 + 32.0
+    return f
 
+def humidity():
+    """Return the current humidity percentage."""
+    return bme.get_humidity()
 
-def humidity() -> float | None:
-    """Return the current relative humidity percentage."""
-    bme = _get_bme()
-    if bme is None:
-        return None
+# pressure sensor removed — not used anymore
+
+def light():
+    """Return the current light level in lux."""
+    return ltr.get_lux()
+
+def noise():
+    calibration_offset = 70  # adjust as needed
+    duration = 0.1  # seconds
+    sample_rate = 44100
+
     try:
-        return bme.get_humidity()
-    except Exception as exc:
-        logger.warning("humidity read failed: %s", exc)
-        return None
-
-
-def light() -> float | None:
-    """Return the current ambient light level in lux."""
-    ltr = _get_ltr()
-    if ltr is None:
-        return None
-    try:
-        return ltr.get_lux()
-    except Exception as exc:
-        logger.warning("light read failed: %s", exc)
-        return None
-
-
-def noise() -> float | None:
-    """
-    Return an estimated A-weighted noise level in dBA.
-
-    Records a short audio burst, computes the RMS amplitude, and converts
-    to dB using the calibration offset defined in sensors/config.py.
-    Returns None if the audio device is unavailable.
-    """
-    try:
-        import sounddevice as sd
         samples = sd.rec(
-            int(NOISE_SAMPLE_DURATION * NOISE_SAMPLE_RATE),
-            samplerate=NOISE_SAMPLE_RATE,
+            int(duration * sample_rate),
+            samplerate=sample_rate,
             channels=1,
-            dtype="float32",
+            dtype='float32'
         )
         sd.wait()
-    except Exception as exc:
-        logger.warning("Noise measurement failed: %s", exc)
-        return None
+    except Exception as e:
+        # If recording fails (no device, etc.), fall back to a neutral value
+        print("Noise measurement failed:", e)
+        return 37.8  # e.g., your "quiet" baseline
 
-    samples = samples[:, 0]
-    rms = float(np.sqrt(np.mean(samples ** 2)))
+    samples = samples[:, 0]  # ensure 1D
+    rms = float(np.sqrt(np.mean(samples**2)))
+
+    # Avoid log10(0)
     if rms <= 1e-12:
         return 0.0
-    return 20 * math.log10(rms) + NOISE_CALIBRATION_OFFSET
 
+    raw_db = 20 * math.log10(rms)
+    db = raw_db + calibration_offset
+    return db
 
-# ---------------------------------------------------------------------------
-# Aggregate reading + mock mode
-# ---------------------------------------------------------------------------
-
-# Set MOCK_SENSORS=1 in the environment to run the app without hardware.
-# Useful for development and demos on non-Pi machines.
-_MOCK = os.getenv("MOCK_SENSORS", "0") == "1"
-
-_MOCK_READINGS: dict = {
-    "temperature_c": 22.0,
-    "temperature_f": 71.6,
-    "humidity_pct":  45.0,
-    "light_lux":    350.0,
-    "noise_db":      48.0,
-}
-
-
-def get_readings() -> dict:
-    """Return a dict of current sensor readings (or mock values if MOCK_SENSORS=1)."""
-    if _MOCK:
-        return dict(_MOCK_READINGS)
+    
+    
+def get_readings():
+    """Return a dict of current sensor readings."""
     return {
         "temperature_c": temperature_c(),
         "temperature_f": temperature_f(),
         "humidity_pct":  humidity(),
-        "light_lux":     light(),
-        "noise_db":      noise(),
-    }
-
-
+        "light_lux": light(),
+        "noise_db": noise(),
+}
+    
 if __name__ == "__main__":
     while True:
-        print(get_readings())
+        readings = get_readings()
+        print(readings)
         time.sleep(1)

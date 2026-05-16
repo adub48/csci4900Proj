@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Cognitive Comfort Index — Environmental Productivity Monitor</title>
+  <title>CCI</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
   <script src="{{ url_for('static', filename='js/main.js') }}" defer></script>
@@ -54,35 +54,32 @@
 </section>
 
 <h2>Live Readings</h2>
-<div id="sensor-error" class="error-banner" role="alert">
-  Sensor connection lost — retrying&hellip;
-</div>
 
 <section class="live-data">
 <div class="sensor-data">
   <h3>Temperature Score</h3>
-  <span class="score" id="tempScore" aria-label="Temperature score"></span>
+  <span class="score" id="tempScore"></span>
   <span class="reading">Live Temp: <span id="tempValue">-</span></span>
   <span class="optimal">Optimal Temp: 71°F</span>
 </div>
 
 <div class="sensor-data">
   <h3>Humidity Score</h3>
-  <span class="score" id="humScore" aria-label="Humidity score"></span>
+  <span class="score" id="humScore"></span>
   <span class="reading">Live Humidity: <span id="humValue">-</span></span>
-  <span class="optimal">Optimal Humidity: 45%</span>
+  <span class="optimal">Optimal Humidity: 50%</span>
 </div>
 
 <div class="sensor-data">
   <h3>Light Score</h3>
-  <span class="score" id="lightScore" aria-label="Light score"></span>
+  <span class="score" id="lightScore"></span>
   <span class="reading">Live Light: <span id="lightValue">-</span></span>
-  <span class="optimal">Optimal Light: 500 Lux</span>
+  <span class="optimal">Optimal Light: 300 Lux</span>
 </div>
 
 <div class="sensor-data">
   <h3>Noise Score</h3>
-  <span class="score" id="noiseScore" aria-label="Noise score"></span>
+  <span class="score" id="noiseScore"></span>
   <span class="reading">Live Noise: <span id="noiseValue">-</span></span>
   <span class="optimal">Optimal Noise: 50 dB</span>
 </div>
@@ -103,9 +100,6 @@
         placeholder="e.g. Main Library 3rd Floor"
         required
         minlength="1"
-        maxlength="60"
-        pattern="[\w\s\-',.()]{1,60}"
-        title="Letters, numbers, spaces, and -',.() only"
       />
       <button type="submit">Save study spot</button>
     </form>
