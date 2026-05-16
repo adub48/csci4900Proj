@@ -39,7 +39,7 @@ def humidityScore(humidity):
     factor = factor * 100
     return factor
 
-#https://www.springernature.com/gp/open-science/about/the-fundamentals-of-open-access-and-open-research
+#Srinivasan et al. (2023), npj Digital Medicine — https://doi.org/10.1038/s41746-023-00873-2
 def noiseScore(dB):
     """
     Convert A-weighted sound level in dBA to a 0–100 'noise productivity' score.
