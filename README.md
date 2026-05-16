@@ -4,7 +4,7 @@ A real-time environmental monitoring and productivity-scoring system built using
 ## Overview
 The Cognitive Comfort Index (CCI) is a real-time monitoring platform designed to evaluate how conducive an environment is to productive work. Using a Raspberry Pi combined with an Enviro Mini sensor board, the system measures temperature, humidity, light, and noise, processes these values using a research-informed scoring model, and computes a unified productivity score ranging from 1 to 100.
 
-The results are displayed on a live Flask-based web dashboard. Users may also save study locations to a NoSQL-backed leaderboard, allowing comparison across different environments and identification of the most productive spaces.
+The results are displayed on a live Flask-based web dashboard. Users may also save study locations to an SQLite-backed leaderboard, allowing comparison across different environments and identification of the most productive spaces.
 
 ## Features
 - Real-time environmental measurements with rapid update frequency
@@ -32,10 +32,10 @@ The results are displayed on a live Flask-based web dashboard. Users may also sa
  │ Normalize + Score  │
  └─────────┬──────────┘
            ▼
- ┌────────────────────┐
- │ Flask Web Server   │
- │ /sensors /scores   │
- └─────────┬──────────┘
+ ┌────────────────────┐     ┌────────────────────┐
+ │ Flask Web Server   │◀───▶│ SQLite DB          │
+ │ /sensors /scores   │     │ sensor_logs.db     │
+ └─────────┬──────────┘     └────────────────────┘
            ▼
  ┌────────────────────┐
  │ Frontend UI        │

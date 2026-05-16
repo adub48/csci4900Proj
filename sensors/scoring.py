@@ -1,8 +1,7 @@
 import numpy as np
-import math
 
 #https://indoor.lbl.gov/publications/effect-temperature-task-performance
-def temperatureScore(temperature, optimal=22.0):
+def temperatureScore(temperature):
     """Productivity function based on temperature in Celsius."""
     return (
         0.0000623 * temperature**3
@@ -38,7 +37,7 @@ def humidityScore(humidity):
     return factor
 
 #https://www.springernature.com/gp/open-science/about/the-fundamentals-of-open-access-and-open-research
-def noiseScore(dB, threshold=0.02):
+def noiseScore(dB):
     """
     Convert A-weighted sound level in dBA to a 0–100 'noise productivity' score.
 

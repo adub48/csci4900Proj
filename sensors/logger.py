@@ -3,33 +3,18 @@ import sqlite3
 import time
 from datetime import datetime, timezone
 
-from bme280 import BME280
-from ltr559 import LTR559
-
-import sounddevice as sd
-import numpy as np
-
 from pathlib import Path
 import sys
 
-# ------------ CONFIG ------------
-LOCATION_NAME = "Bedroom"  # default if no name is provided
-LOG_INTERVAL_SECONDS = 5  # how often to log
-NOISE_SAMPLE_DURATION = 0.1  # seconds of audio to sample for noise
-NOISE_SAMPLE_RATE = 44100
-# -------------------------------
+from sensors.config import DB_PATH, LOG_INTERVAL_SECONDS, LOCATION_NAME
 
-bme = BME280()
-ltr = LTR559()
-
-BASE_DIR = Path(__file__).resolve().parent       # .../csci4900Proj/flask_app
-PROJECT_ROOT = BASE_DIR.parent                   # .../csci4900Proj
+BASE_DIR = Path(__file__).resolve().parent
+PROJECT_ROOT = BASE_DIR.parent
 sys.path.append(str(PROJECT_ROOT))
 
 from sensors.scoring import calculateScores
 from sensors.read_sensors import get_readings
 
-DB_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "sensor_logs.db")
 os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
 
 
@@ -96,7 +81,6 @@ def insert_reading(timestamp_utc, location, reading,scores):
 
 
 def main(name: str | None = None):
-    
 
     now_utc = datetime.now(timezone.utc).isoformat()
     start = time.time()
@@ -130,7 +114,7 @@ def main(name: str | None = None):
         f"[{now_utc}] Averages over {LOG_INTERVAL_SECONDS}s — "
         f"Temp: {avg_temp:.2f} °F | Humidity: {avg_hum:.2f} % | Light: {avg_light:.2f} lux | Noise: {avg_noise:.5f} RMS"
     )
-    
+
     reading = {
         "temperature_c": avg_tempC,
         "temperature_f": avg_temp,

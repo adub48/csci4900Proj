@@ -1,12 +1,4 @@
-from datetime import datetime, timezone
-
 from flask import Flask, jsonify, render_template, request
-
-from bme280 import BME280
-from ltr559 import LTR559
-import sounddevice as sd
-import numpy as np
-
 
 from pathlib import Path
 import sqlite3

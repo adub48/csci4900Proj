@@ -3,8 +3,9 @@ from ltr559 import LTR559
 import sounddevice as sd
 import numpy as np
 import time
-import os
 import math
+
+from sensors.config import NOISE_SAMPLE_DURATION, NOISE_SAMPLE_RATE
 
 # Initialize sensors
 bme = BME280()
@@ -40,13 +41,11 @@ def light():
 
 def noise():
     calibration_offset = 70  # adjust as needed
-    duration = 0.1  # seconds
-    sample_rate = 44100
 
     try:
         samples = sd.rec(
-            int(duration * sample_rate),
-            samplerate=sample_rate,
+            int(NOISE_SAMPLE_DURATION * NOISE_SAMPLE_RATE),
+            samplerate=NOISE_SAMPLE_RATE,
             channels=1,
             dtype='float32'
         )
