@@ -20,15 +20,16 @@ def lightScore(lux, optimal=500):
 #https://pubmed.ncbi.nlm.nih.gov/15330775/
 def humidityScore(humidity):
     """
-    Returns a multiplicative comfort factor between 0 and 1 based on relative humidity.
-    
+    Returns a comfort score from 0 to 100 based on relative humidity.
+
     rh: relative humidity in percent (0–100).
-    
+
     Model assumptions (comfort / productivity-oriented):
-      - Optimal around 45% RH  -> factor ≈ 1.00
-      - Mild penalty at 30% or 60% RH -> factor ≈ 0.95
-      - Larger penalty at 20% or 70% RH -> factor ≈ 0.80
-      - Strong penalty at 10% or 80% RH -> factor ≈ 0.55
+      - Optimal around 45% RH  -> score ≈ 100
+      - Mild penalty at 30% or 60% RH -> score ≈ 95
+      - Larger penalty at 20% or 70% RH -> score ≈ 86
+      - Strong penalty at 10% or 80% RH -> score ≈ 73
+      - Extreme penalty at 0% or 90% RH  -> score ≈ 55 / 33
     """
     rh = max(0.0, min(100.0, humidity))
     
