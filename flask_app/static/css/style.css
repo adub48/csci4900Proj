@@ -1,14 +1,35 @@
 body {
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  padding: 2rem;
+  margin: 0;
+  background: #f9fafb;
 }
+
+main {
+  padding: 2rem;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
 header {
-    background: linear-gradient(135deg, #4f8cff 0%, #2a3d66 100%);
-    padding: 1em 0em 2em 0em;
-    text-align: center;
-    border-bottom-left-radius: 2em;
-    border-bottom-right-radius: 2em;
-    margin: 0 auto 2em auto;
+  background: linear-gradient(135deg, #4f8cff 0%, #2a3d66 100%);
+  padding: 2em 1em 3em;
+  text-align: center;
+  border-bottom-left-radius: 2em;
+  border-bottom-right-radius: 2em;
+  margin-bottom: 2em;
+}
+
+h1 {
+  color: #fff;
+  margin: 0 0 0.25em;
+  font-size: 2rem;
+  font-weight: 700;
+}
+
+.header-subtitle {
+  color: rgba(255, 255, 255, 0.8);
+  margin: 0;
+  font-size: 1rem;
 }
 
 h2 {
@@ -35,11 +56,32 @@ h3 {
   margin-bottom: 0.5em;
 }
 
+.reading {
+  font-size: 0.95em;
+  color: #374151;
+}
+
 .optimal {
   font-size: 0.9em;
   color: #6b7280;
   margin-top: 0.25em;
 }
+
+.good {
+  color: #16a34a;
+  font-weight: bold;
+}
+
+.medium {
+  color: #d97706;
+}
+
+.bad {
+  color: #dc2626;
+  font-weight: bold;
+}
+
+/* ── Sensor cards ───────────────────────────────────── */
 
 .sensor-data {
   background: #fff;
@@ -53,6 +95,52 @@ h3 {
   transition: box-shadow 0.2s;
   min-width: 0;
 }
+
+.cci-section {
+  display: flex;
+  justify-content: center;
+  margin: 2rem 0;
+}
+
+.cci-card {
+  max-width: 380px;
+  padding: 2rem 2.5rem;
+  gap: 0.25rem;
+}
+
+.cci-card-title {
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: #9ca3af;
+  margin: 0 0 0.75rem;
+}
+
+.cci-label {
+  display: inline-block;
+  padding: 0.3rem 1.25rem;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  margin-top: 0.75rem;
+}
+
+.cci-label.excellent { background: #dcfce7; color: #15803d; }
+.cci-label.good      { background: #dbeafe; color: #1d4ed8; }
+.cci-label.fair      { background: #fef9c3; color: #a16207; }
+.cci-label.poor      { background: #ffedd5; color: #c2410c; }
+.cci-label.very-poor { background: #fef2f2; color: #b91c1c; }
+
+.cci-desc {
+  font-size: 0.9rem;
+  color: #6b7280;
+  text-align: center;
+  margin: 0.4rem 0 0;
+  max-width: 260px;
+}
+
 section.live-data {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -60,62 +148,37 @@ section.live-data {
   margin: 2em 0;
 }
 
-section.controls {
-  text-align: center;
+@media (max-width: 900px) {
+  section.live-data {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 
-
-button {
-  padding: 0.5rem 1rem;
-  border-radius: 999px;
-  border: none;
-  background: #2563eb;
-  color: white;
-  font-weight: 600;
-  cursor: pointer;
-  margin-bottom: 1rem;
-}
-button:disabled {
-  background: #9ca3af;
-  cursor: default;
-}
-.card {
-  background: white;
-  border-radius: 12px;
-  padding: 1rem;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
-  max-width: 500px;
+@media (max-width: 500px) {
+  section.live-data {
+    grid-template-columns: 1fr;
+  }
 }
 
-.good {
-  color: green;
-  font-weight: bold;
-}
-.medium {
-  color: orange;
-}
-.bad {
-  color: red;
-  font-weight: bold;
-}
+/* ── Progress ring ──────────────────────────────────── */
 
 .circle-card {
   position: relative;
-  width: 140px;
-  height: 140px;
+  width: 200px;
+  height: 200px;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin: 1rem;
+  margin: 0.5rem;
 }
 
 .progress-ring {
-  transform: rotate(-90deg); /* start at top */
+  transform: rotate(-90deg);
 }
 
 .progress-ring__bg {
   fill: none;
-  stroke: #e5e7eb;          /* light gray */
+  stroke: #e5e7eb;
   stroke-width: 10;
 }
 
@@ -138,35 +201,87 @@ button:disabled {
 .circle-icon {
   font-size: 24px;
   margin-bottom: 4px;
-  color: #9ca3af;
 }
 
 .circle-score {
-  font-size: 22px;
-  font-weight: 600;
+  font-size: 3rem;
+  font-weight: 700;
   color: #111827;
+  line-height: 1;
 }
 
 .circle-max {
-  font-size: 14px;
+  font-size: 1rem;
   color: #9ca3af;
+  margin-top: 0.2rem;
 }
+
+/* ── Buttons ────────────────────────────────────────── */
+
+button {
+  padding: 0.5rem 1rem;
+  border-radius: 999px;
+  border: none;
+  background: #2563eb;
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+button:hover {
+  background: #1d4ed8;
+}
+
+button:disabled {
+  background: #9ca3af;
+  cursor: default;
+}
+
+/* ── Error / toast banners ──────────────────────────── */
+
+.feed-error {
+  background: #fef2f2;
+  border: 1px solid #fca5a5;
+  color: #b91c1c;
+  border-radius: 0.5em;
+  padding: 0.6rem 1rem;
+  margin-bottom: 1.5rem;
+  font-size: 0.9rem;
+  text-align: center;
+}
+
+.form-toast {
+  padding: 0.6rem 1rem;
+  border-radius: 0.5em;
+  font-size: 0.9rem;
+  margin-bottom: 1rem;
+}
+
+.form-toast.success {
+  background: #f0fdf4;
+  border: 1px solid #86efac;
+  color: #15803d;
+}
+
+.form-toast.error {
+  background: #fef2f2;
+  border: 1px solid #fca5a5;
+  color: #b91c1c;
+}
+
+/* ── Leaderboard ────────────────────────────────────── */
 
 section.leaderboard {
-  margin: 3rem auto;
-  max-width: 1400px;
-  padding: 0 1rem 3rem;
+  margin: 3rem 0 0;
 }
-
-/* Title + subtitle stay consistent with other headings */
 
 .section-subtitle {
   font-size: 0.95rem;
   color: #6b7280;
-  margin-bottom: 2rem;
+  margin-bottom: 1.5rem;
 }
 
-/* Card container – matches .sensor-data look */
 .leaderboard-table-wrapper {
   width: 100%;
   background: #ffffff;
@@ -175,16 +290,15 @@ section.leaderboard {
   border: 1px solid #d1d1d1;
   padding: 1.5rem 1.75rem;
   overflow-x: auto;
+  box-sizing: border-box;
 }
 
-/* Table styles */
 .leaderboard-table {
   width: 100%;
   border-collapse: collapse;
   font-size: 0.95rem;
 }
 
-/* Table header */
 .leaderboard-table thead tr {
   background: #f3f4f6;
 }
@@ -199,7 +313,6 @@ section.leaderboard {
   letter-spacing: 0.06em;
 }
 
-/* Table body */
 .leaderboard-table td {
   padding: 0.9rem 1.1rem;
   border-bottom: 1px solid #e5e7eb;
@@ -215,7 +328,6 @@ section.leaderboard {
   transition: background 0.2s ease;
 }
 
-/* Column tweaks */
 .col-rank {
   width: 70px;
 }
@@ -225,43 +337,34 @@ section.leaderboard {
   font-weight: 500;
 }
 
-/* Make rank stand out but still on-brand */
 .leaderboard-table td.col-rank {
   font-weight: 700;
   color: #2a3d66;
 }
 
-/* Header row: title + save form */
-.leaderboard-header-row {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 1.5rem;
-  margin-bottom: 1.25rem;
-  flex-wrap: wrap;
-}
-
 .leaderboard-heading {
   text-align: left;
+  margin-bottom: 1.25rem;
 }
 
 #leaderboard-title {
   text-align: left;
+  margin-bottom: 0.25em;
 }
 
-/* Reuse your existing h2 style from global,
-   so nothing special needed here */
+/* ── Study spot form ────────────────────────────────── */
 
-/* Save study spot form */
 .studyspot-form {
+  display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 0.75rem;
-  text-align: center;
+  margin-bottom: 1.5rem;
 }
 
 .studyspot-label {
   font-size: 0.85rem;
-  color: #4b5563; /* gray-600 */
+  color: #4b5563;
 }
 
 .studyspot-input {
@@ -278,7 +381,6 @@ section.leaderboard {
   box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
 }
 
-/* Button already styled globally; this just ensures spacing in the row */
 .studyspot-form button {
-  margin-bottom: 0; /* override global margin-bottom if needed */
+  margin-bottom: 0;
 }
