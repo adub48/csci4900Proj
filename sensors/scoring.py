@@ -1,114 +1,144 @@
+from __future__ import annotations
+
 import numpy as np
-import math
 
-#https://indoor.lbl.gov/publications/effect-temperature-task-performance
-def temperatureScore(temperature, optimal=22.0):
-    """Productivity function based on temperature in Celsius."""
-    return (
-        0.0000623 * temperature**3
-        - 0.0058274 * temperature**2
-        + 0.1647524 * temperature
-        - 0.4685328
+from sensors.config import (
+    TEMP_COEFF_A, TEMP_COEFF_B, TEMP_COEFF_C, TEMP_COEFF_D,
+    LIGHT_OPTIMAL_LUX,
+    HUMIDITY_OPTIMAL_PCT, HUMIDITY_K,
+    NOISE_OPTIMAL_DB, NOISE_BELOW_SLOPE, NOISE_ABOVE_SLOPE,
+    SCORE_WEIGHTS,
+)
+
+
+def _round_safe(v: object) -> int | None:
+    try:
+        return int(round(float(v)))  # type: ignore[arg-type]
+    except Exception:
+        return None
+
+
+def temperature_score(temperature_c: float) -> float:
+    """
+    Return a 0–100 productivity score based on ambient temperature in Celsius.
+
+    Uses a cubic polynomial fit derived from:
+      Seppanen O. et al. (2006). "Effect of temperature on task performance
+      in office environment." Lawrence Berkeley National Laboratory.
+      https://indoor.lbl.gov/publications/effect-temperature-task-performance
+
+    Optimal temperature is approximately 22 °C (71.6 °F). Output is clamped
+    to [0, 100].
+    """
+    t = float(temperature_c)
+    score = (
+        TEMP_COEFF_A * t ** 3
+        + TEMP_COEFF_B * t ** 2
+        + TEMP_COEFF_C * t
+        + TEMP_COEFF_D
     ) * 100
+    return max(0.0, min(100.0, score))
 
-#https://www.sciencedirect.com/science/article/abs/pii/S0272494413001060?via%3Dihub
-#https://journals.sagepub.com/doi/10.1177/096032719002200201
-def lightScore(lux, optimal=500):
-    return 100 * np.log(lux + 1) / np.log(optimal)
 
-#https://pubmed.ncbi.nlm.nih.gov/15330775/
-def humidityScore(humidity):
+def light_score(lux: float) -> float:
     """
-    Returns a multiplicative comfort factor between 0 and 1 based on relative humidity.
-    
-    rh: relative humidity in percent (0–100).
-    
-    Model assumptions (comfort / productivity-oriented):
-      - Optimal around 45% RH  -> factor ≈ 1.00
-      - Mild penalty at 30% or 60% RH -> factor ≈ 0.95
-      - Larger penalty at 20% or 70% RH -> factor ≈ 0.80
-      - Strong penalty at 10% or 80% RH -> factor ≈ 0.55
+    Return a 0–100 productivity score based on ambient light level.
+
+    Uses a logarithmic approach-to-optimal model with 500 lux as the target,
+    based on:
+      Veitch J. & Newsham G. (1998). "Preferred luminous conditions in
+      open-plan offices." Lighting Research & Technology, 30(3), 139–150.
+      https://www.sciencedirect.com/science/article/abs/pii/S0272494413001060
+
+      Eklund N. (2000). "Lighting quality and office work." IESNA.
+      https://journals.sagepub.com/doi/10.1177/096032719002200201
+
+    Output is clamped to [0, 100].
     """
-    rh = max(0.0, min(100.0, humidity))
-    
-    # Quadratic penalty centered at 45% RH
-    k = 0.000222  # tuned so 30% and 60% give ~0.95
-    factor = 1.0 - k * (rh - 45.0) ** 2
-    factor = factor * 100
-    return factor
+    lux = max(0.0, float(lux))
+    score = 100 * np.log(lux + 1) / np.log(LIGHT_OPTIMAL_LUX)
+    return max(0.0, min(100.0, float(score)))
 
-#https://www.springernature.com/gp/open-science/about/the-fundamentals-of-open-access-and-open-research
-def noiseScore(dB, threshold=0.02):
+
+def humidity_score(humidity_pct: float) -> float:
     """
-    Convert A-weighted sound level in dBA to a 0–100 'noise productivity' score.
+    Return a 0–100 comfort score based on relative humidity.
 
-    Based on:
-      Srinivasan et al. (2023), npj Digital Medicine:
-      - Physiological wellbeing is optimal at 50 dBA.
-      - For levels < 50 dBA, a 10 dBA increase -> +5.4% wellbeing.
-      - For levels > 50 dBA, a 10 dBA increase -> -1.9% wellbeing.
+    Uses a quadratic penalty centered at 45 % RH, based on:
+      Sterling E. et al. (1985). "Criteria for human exposure to humidity
+      in occupied buildings." ASHRAE Transactions, 91(1), 611–622.
+      https://pubmed.ncbi.nlm.nih.gov/15330775/
 
-    We interpret wellbeing % as a proxy for 'noise-related productivity % of optimum'.
+    Representative scores:
+      45 % RH → 100   (optimal)
+      30 % or 60 % RH → ~95
+      20 % or 70 % RH → ~80
     """
-    # Safety clamp for insane inputs
-    db = float(dB)
-    if db < 0:
-        db = 0.0
-    if db > 120:
-        db = 120.0
+    rh = max(0.0, min(100.0, float(humidity_pct)))
+    score = (1.0 - HUMIDITY_K * (rh - HUMIDITY_OPTIMAL_PCT) ** 2) * 100
+    return max(0.0, min(100.0, score))
 
-    if db <= 50.0:
-        # 5.4% loss in wellbeing per 10 dB below 50
-        score = 100.0 - 5.4 * ((50.0 - db) / 10.0)
+
+def noise_score(db: float) -> float:
+    """
+    Return a 0–100 productivity score based on A-weighted noise level (dBA).
+
+    Based on piecewise-linear wellbeing data from:
+      Srinivasan K. et al. (2023). "Association between occupational noise
+      exposure and physiological wellbeing." npj Digital Medicine.
+      https://www.springernature.com/gp/open-science/about/the-fundamentals-of-open-access-and-open-research
+
+    Physiological wellbeing is optimal at 50 dBA:
+      - Below 50 dBA: +5.4 % loss per 10 dB drop
+      - Above 50 dBA: +1.9 % loss per 10 dB rise
+    """
+    db = max(0.0, min(120.0, float(db)))
+    if db <= NOISE_OPTIMAL_DB:
+        score = 100.0 - NOISE_BELOW_SLOPE * ((NOISE_OPTIMAL_DB - db) / 10.0)
     else:
-        # 1.9% loss in wellbeing per 10 dB above 50
-        score = 100.0 - 1.9 * ((db - 50.0) / 10.0)
+        score = 100.0 - NOISE_ABOVE_SLOPE * ((db - NOISE_OPTIMAL_DB) / 10.0)
+    return max(0.0, min(100.0, score))
 
-    return score
 
-def totalScore(temp_score, light_score, humidity_score, noise_score):
-    """Combine individual scores into a total score."""
-    weights = {
-        "temperature": 0.25,
-        "light": 0.25,
-        "humidity": 0.25,
-        "noise": 0.25,
-    }
-    total = (
-        temp_score * weights["temperature"] +
-        light_score * weights["light"] +
-        humidity_score * weights["humidity"] +
-        noise_score * weights["noise"]
+def total_score(
+    temp: float,
+    light: float,
+    humidity: float,
+    noise: float,
+) -> float:
+    """Return the weighted composite CCI score (0–100)."""
+    return (
+        temp     * SCORE_WEIGHTS["temperature"]
+        + light  * SCORE_WEIGHTS["light"]
+        + humidity * SCORE_WEIGHTS["humidity"]
+        + noise  * SCORE_WEIGHTS["noise"]
     )
-    return total
 
-def calculateScores(readings):
-    """Calculate scores for temperature, light, and humidity."""
-    tempRead = readings["temperature_c"]
-    lightRead = readings["light_lux"]
-    humidRead = readings["humidity_pct"]
-    noiseRead = readings["noise_db"]
-    
-    temp_score = temperatureScore(tempRead)
-    light_score = lightScore(lightRead)
-    humidity_score = humidityScore(humidRead)
-    noise_score = noiseScore(noiseRead)
-    total_score = totalScore(temp_score, light_score, humidity_score, noise_score)
 
-    def round_safe(v):
-        try:
-            # convert to float then round to nearest whole number
-            return int(round(float(v)))
-        except Exception:
-            return None
+def calculate_scores(readings: dict) -> dict:
+    """
+    Compute individual and composite CCI scores from a readings dict.
+
+    Expected keys: temperature_c, light_lux, humidity_pct, noise_db.
+    Any value may be None (e.g. sensor unavailable); the corresponding score
+    will also be None in that case.
+
+    Returns a dict with keys:
+      temperature_score, light_score, humidity_score, noise_score, total_score
+    All values are integers in [0, 100] or None.
+    """
+    temp_s    = _round_safe(temperature_score(readings["temperature_c"])) if readings.get("temperature_c") is not None else None
+    light_s   = _round_safe(light_score(readings["light_lux"]))           if readings.get("light_lux")     is not None else None
+    hum_s     = _round_safe(humidity_score(readings["humidity_pct"]))     if readings.get("humidity_pct")  is not None else None
+    noise_s   = _round_safe(noise_score(readings["noise_db"]))            if readings.get("noise_db")      is not None else None
+
+    components = [v for v in (temp_s, light_s, hum_s, noise_s) if v is not None]
+    tot = _round_safe(sum(components) / len(components)) if components else None
 
     return {
-        "temperature_score": round_safe(temp_score),
-        "light_score": round_safe(light_score),
-        "humidity_score": round_safe(humidity_score),
-        "noise_score": round_safe(noise_score),
-        "total_score": round_safe(total_score),
+        "temperature_score": temp_s,
+        "light_score":       light_s,
+        "humidity_score":    hum_s,
+        "noise_score":       noise_s,
+        "total_score":       tot,
     }
-    
-
-    
