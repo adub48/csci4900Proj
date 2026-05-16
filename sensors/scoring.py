@@ -14,7 +14,8 @@ def temperatureScore(temperature):
 #https://www.sciencedirect.com/science/article/abs/pii/S0272494413001060?via%3Dihub
 #https://journals.sagepub.com/doi/10.1177/096032719002200201
 def lightScore(lux, optimal=500):
-    return 100 * np.log(lux + 1) / np.log(optimal)
+    score = 100 * np.log(lux + 1) / np.log(optimal)
+    return max(0.0, min(100.0, score))
 
 #https://pubmed.ncbi.nlm.nih.gov/15330775/
 def humidityScore(humidity):
