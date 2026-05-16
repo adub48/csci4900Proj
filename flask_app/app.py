@@ -1,125 +1,151 @@
+from __future__ import annotations
+
+import logging
+import re
+import sqlite3
+import sys
 from datetime import datetime, timezone
+from pathlib import Path
+from threading import Lock
 
 from flask import Flask, jsonify, render_template, request
 
-from bme280 import BME280
-from ltr559 import LTR559
-import sounddevice as sd
-import numpy as np
-
-
-from pathlib import Path
-import sqlite3
-import sys
-
-BASE_DIR = Path(__file__).resolve().parent       # .../csci4900Proj/flask_app
-PROJECT_ROOT = BASE_DIR.parent                   # .../csci4900Proj
+BASE_DIR = Path(__file__).resolve().parent   # .../csci4900Proj/flask_app
+PROJECT_ROOT = BASE_DIR.parent               # .../csci4900Proj
 sys.path.append(str(PROJECT_ROOT))
 
-from sensors.scoring import calculateScores
+from sensors.config import MAX_LOCATION_NAME_LEN
+from sensors.logger import ensure_db, main as log_reading
 from sensors.read_sensors import get_readings
-from sensors.logger import main, ensure_db
-from threading import Lock
+from sensors.scoring import calculate_scores
 
-import logging
-log = logging.getLogger('werkzeug')
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(name)s %(levelname)s %(message)s",
+)
+logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 
-# Global lock to coordinate sensor access between routes
+# Coordinates sensor access between the live-feed and log routes so a
+# 5-second logging run doesn't race with a /sensors poll.
 sensor_lock = Lock()
+
+_VALID_NAME_RE = re.compile(r"^[\w\s\-',.()]{1,60}$")
 
 
 # ------------ ROUTES ------------
 
 @app.route("/")
 def index():
-    """
-    Frontend page with a button. The JS on this page will call /api/read.
-    """
+    """Render the main dashboard page."""
     return render_template("index.html")
 
 
 @app.route("/sensors", methods=["GET"])
 def sensors():
-    log.setLevel(logging.ERROR)
-    # Wait here if another route (e.g. /api/log) is currently
-    # holding the sensor lock while doing a longer measurement.
+    """
+    Return the latest sensor readings and CCI scores as JSON.
+
+    Acquires the sensor lock so this call pauses if /api/log is currently
+    running its 5-second averaging routine.
+    """
     with sensor_lock:
         readings = get_readings()
-    scores = calculateScores(readings)
+    scores = calculate_scores(readings)
     return jsonify({"readings": readings, "scores": scores})
 
+
 @app.route("/api/log", methods=["POST"])
-def log_reading():
-    log.setLevel(logging.INFO)
+def api_log():
+    """
+    Average sensor readings over a short interval and persist them under
+    the provided location name.
+
+    Request body (JSON): { "name": "<study spot name>" }
+    """
     data = request.get_json(silent=True) or {}
-    name = data.get("name")
-    if not name or not isinstance(name, str):
-        return jsonify({"status": "error", "message": "Missing or invalid 'name'"}), 400
+    name = (data.get("name") or "").strip()
+
+    if not name:
+        return jsonify({"status": "error", "message": "Name is required."}), 400
+    if len(name) > MAX_LOCATION_NAME_LEN:
+        return jsonify({
+            "status": "error",
+            "message": f"Name must be {MAX_LOCATION_NAME_LEN} characters or fewer.",
+        }), 400
+    if not _VALID_NAME_RE.match(name):
+        return jsonify({
+            "status": "error",
+            "message": "Name contains invalid characters.",
+        }), 400
 
     try:
-        # Take exclusive access to the sensors while we perform
-        # the longer logging routine so /sensors pauses until done.
         with sensor_lock:
-            main(name)
+            log_reading(name)
         return jsonify({"status": "success", "message": "Reading logged.", "name": name})
-    except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+    except Exception:
+        logger.exception("Failed to log reading for %r", name)
+        return jsonify({"status": "error", "message": "Internal error while logging."}), 500
 
 
 @app.route("/leaderboard", methods=["GET"])
 def leaderboard():
-    log.setLevel(logging.INFO)
+    """
+    Return the best (highest CCI) reading per location, sorted descending.
+    """
     db_path = PROJECT_ROOT / "data" / "sensor_logs.db"
-    # Make sure database and table exist so first load works
     try:
         ensure_db()
     except Exception:
+        logger.exception("Could not ensure database")
         return jsonify([])
+
     if not db_path.exists():
         return jsonify([])
 
-    conn = sqlite3.connect(str(db_path))
-    conn.row_factory = sqlite3.Row
-    cur = conn.cursor()
+    try:
+        conn = sqlite3.connect(str(db_path))
+        conn.row_factory = sqlite3.Row
+        cur = conn.cursor()
+        cur.execute(
+            """
+            SELECT sl.timestamp_utc, sl.location,
+                   sl.temperature_score, sl.humidity_score,
+                   sl.light_score, sl.noise_score, sl.total_score
+            FROM sensor_logs sl
+            INNER JOIN (
+                SELECT location, MAX(timestamp_utc) AS max_ts
+                FROM sensor_logs
+                GROUP BY location
+            ) latest
+              ON latest.location = sl.location
+             AND latest.max_ts   = sl.timestamp_utc
+            ORDER BY sl.total_score DESC;
+            """
+        )
+        rows = cur.fetchall()
+        conn.close()
+    except Exception:
+        logger.exception("Leaderboard query failed")
+        return jsonify([])
 
-    # Get the latest reading per location by max timestamp, then sort by total_score desc
-    cur.execute(
-        """
-        SELECT sl.timestamp_utc, sl.location,
-               sl.temperature_score, sl.humidity_score, sl.light_score, sl.noise_score, sl.total_score
-        FROM sensor_logs sl
-        INNER JOIN (
-            SELECT location, MAX(timestamp_utc) AS max_ts
-            FROM sensor_logs
-            GROUP BY location
-        ) latest ON latest.location = sl.location AND latest.max_ts = sl.timestamp_utc
-        ORDER BY sl.total_score DESC;
-        """
-    )
-    rows = cur.fetchall()
-    conn.close()
-
-    result = [
+    return jsonify([
         {
-            "timestamp_utc": r["timestamp_utc"],
-            "location": r["location"],
+            "timestamp_utc":     r["timestamp_utc"],
+            "location":          r["location"],
             "temperature_score": r["temperature_score"],
-            "humidity_score": r["humidity_score"],
-            "light_score": r["light_score"],
-            "noise_score": r["noise_score"],
-            "total_score": r["total_score"],
+            "humidity_score":    r["humidity_score"],
+            "light_score":       r["light_score"],
+            "noise_score":       r["noise_score"],
+            "total_score":       r["total_score"],
         }
         for r in rows
-    ]
-
-    return jsonify(result)
-    
+    ])
 
 
 # ------------ ENTRYPOINT ------------
 
 if __name__ == "__main__":
-    # 0.0.0.0 so you can reach it from your laptop on the same network
+    # 0.0.0.0 makes the dashboard reachable from other devices on the network.
     app.run(host="0.0.0.0", port=5000, debug=False)
