@@ -311,12 +311,14 @@ section.leaderboard {
   color: #2a3d66;
   border-bottom: 2px solid #e5e7eb;
   letter-spacing: 0.06em;
+  text-align: center;
 }
 
 .leaderboard-table td {
   padding: 0.9rem 1.1rem;
   border-bottom: 1px solid #e5e7eb;
   color: #111827;
+  text-align: center;
 }
 
 .leaderboard-table tbody tr:nth-child(even) {
